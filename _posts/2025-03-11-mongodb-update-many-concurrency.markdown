@@ -8,13 +8,10 @@ categories: post
 This is how I process a bunch of records.
 ```
 ObjectId dispatchId = ObjectId.GenerateNewId();
-await collection.UpdateManyAsync(
-    Builders<TDocument>.Filter.Eq(x => x.IsProcessed, false),
-    Builders<TDocument>.Update
-        .Set(x => x.IsProcessed, true)
-        .Set(x => x.DispatchId, dispatchId));
+await collection.UpdateManyAsync(x => x.DispatchId == null,
+    Builders<TDocument>.Update.Set(x => x.DispatchId, dispatchId));
 
-List<TDocument> toProcess = await collection.Find(Builders<TDocument>.Filter.Eq(x => x.DispatchId, dispatchId))
+List<TDocument> toProcess = await collection.Find(x => x.DispatchId == dispatchId)
     .ToListAsync();
 
 try
@@ -23,10 +20,9 @@ try
 } catch (Exception ex)
 {
     await collection.UpdateManyAsync(
-        Builders<TDocument>.Filter.Eq(x => x.Id, dispatchId),
+        x => x.DispatchId == dispatchId,
         Builders<TDocument>.Update
-            .Set(x => x.DispatchId, null)
-            .Set(x => x.IsProcessed, false));
+            .Set(x => x.DispatchId, null));
     throw;
 }
 ```
@@ -47,13 +43,14 @@ List<TDocument> toProcess = await collection.Find(Builders<TDocument>.Filter.Eq(
 
 ... doing some processing
 
+
+// A concurrent operation could finish before this operation completes, affecting the `toProcess` documents.
 await collection.UpdateManyAsync(
     Builders<TDocument>.Filter.In(x => x.Id, toProcess.Select(x => x.Id)),
     Builders<TDocument>.Update.Set(x => x.IsProcessed, true));
-
 ```
 
-The problem with this is that if another concurrent operation is processing records, the other operation could affect the records between the retrieval and update, which could cause a write failure or data loss.
+The problem with this is that if another concurrent operation is processing records, the other operation could affect the records between the retrieval and update, which would cause a write failure or data loss.
 
 ---
 
