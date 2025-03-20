@@ -83,6 +83,7 @@ FROM nginx:1.27-alpine AS production
 EXPOSE 80
 
 COPY .docker/100-env-variables.sh /docker-entrypoint.d/
+RUN chmod +x /docker-entrypoint.d/100-env-variables.sh
 COPY .docker/default.conf /etc/nginx/conf.d/
 
 WORKDIR /usr/share/nginx/html
@@ -134,5 +135,5 @@ server {
 
 ## 4. Create the docker image and try it out.
 
-`docker build -t env-spa .`
+`docker build -t env-spa .`\
 `docker run -p 8080:80 -e VITE_NAME=Labod env-spa`
